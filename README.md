@@ -1,12 +1,46 @@
-# React + Vite
+# MERN CRUD Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite 前端專案，使用 Bootstrap、SweetAlert2、React Icons。
 
-Currently, two official plugins are available:
+## 功能特色
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- ✅ 完整的 CRUD 操作（新增、讀取、更新、刪除）
+- ✅ Bootstrap Modal 表單
+- ✅ SweetAlert2 提示視窗
+- ✅ React Icons 圖示
+- ✅ Google Fonts（Noto Sans TC、Roboto）
+- ✅ 錯誤處理與載入狀態
+- ✅ 響應式設計
 
-## Expanding the ESLint configuration
+## 本地開發
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+## 環境變數
+
+建立 `.env` 檔案：
+
+```env
+VITE_API_URL=http://localhost:5000
+```
+
+## 部署到 Render
+
+1. 在 Render 建立 **Static Site**
+2. 連接 GitHub 倉庫
+3. 設定環境變數：
+   - `VITE_API_URL`: 你的 Render 後端網址
+4. Build Command: `npm run build`
+5. Publish Directory: `dist`
+
+## 技術棧
+
+- React 18
+- Vite
+- Bootstrap 5
+- SweetAlert2
+- React Icons
+- Axios

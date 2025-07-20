@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { API_ENDPOINTS } from './config/api';
 import './App.css';
 
 function App() {
@@ -11,12 +12,25 @@ function App() {
   const [editValue, setEditValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
   // 取得所有 items
   const fetchItems = async () => {
-    const res = await axios.get('http://localhost:5000/api/items');
-    setItems(res.data);
+    try {
+      setLoading(true);
+      const res = await axios.get(API_ENDPOINTS.ITEMS);
+      setItems(res.data);
+    } catch (error) {
+      console.error('Error fetching items:', error);
+      Swal.fire({
+        icon: 'error',
+        title: '載入失敗',
+        text: '無法載入資料，請檢查網路連線或後端服務狀態。',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -56,11 +70,24 @@ function App() {
   const handleAdd = async (e) => {
     e.preventDefault();
     if (!input) return;
-    await axios.post('http://localhost:5000/api/items', { name: input });
-    setInput('');
-    fetchItems();
-    setShowModal(false);
-    Swal.fire({ icon: 'success', title: '新增成功', text: '已新增一筆資料！' });
+    try {
+      await axios.post(API_ENDPOINTS.ITEMS, { name: input });
+      setInput('');
+      fetchItems();
+      setShowModal(false);
+      Swal.fire({
+        icon: 'success',
+        title: '新增成功',
+        text: '已新增一筆資料！',
+      });
+    } catch (error) {
+      console.error('Error adding item:', error);
+      Swal.fire({
+        icon: 'error',
+        title: '新增失敗',
+        text: '無法新增資料，請稍後再試。',
+      });
+    }
   };
 
   // 刪除 item
@@ -73,23 +100,41 @@ function App() {
       cancelButtonText: '取消',
     });
     if (result.isConfirmed) {
-      await axios.delete(`http://localhost:5000/api/items/${id}`);
-      fetchItems();
-      Swal.fire({ icon: 'success', title: '刪除成功', text: '資料已刪除！' });
+      try {
+        await axios.delete(`${API_ENDPOINTS.ITEMS}/${id}`);
+        fetchItems();
+        Swal.fire({ icon: 'success', title: '刪除成功', text: '資料已刪除！' });
+      } catch (error) {
+        console.error('Error deleting item:', error);
+        Swal.fire({
+          icon: 'error',
+          title: '刪除失敗',
+          text: '無法刪除資料，請稍後再試。',
+        });
+      }
     }
   };
 
   // 儲存編輯
   const handleUpdate = async (e) => {
     e.preventDefault();
-    await axios.put(`http://localhost:5000/api/items/${editId}`, {
-      name: editValue,
-    });
-    setEditId(null);
-    setEditValue('');
-    setShowModal(false);
-    fetchItems();
-    Swal.fire({ icon: 'success', title: '更新成功', text: '資料已更新！' });
+    try {
+      await axios.put(`${API_ENDPOINTS.ITEMS}/${editId}`, {
+        name: editValue,
+      });
+      setEditId(null);
+      setEditValue('');
+      setShowModal(false);
+      fetchItems();
+      Swal.fire({ icon: 'success', title: '更新成功', text: '資料已更新！' });
+    } catch (error) {
+      console.error('Error updating item:', error);
+      Swal.fire({
+        icon: 'error',
+        title: '更新失敗',
+        text: '無法更新資料，請稍後再試。',
+      });
+    }
   };
 
   return (
@@ -103,32 +148,40 @@ function App() {
           <FaPlus className="me-2" /> 新增
         </button>
       </div>
-      <ul className="list-group">
-        {items.map((item) => (
-          <li
-            key={item._id}
-            className="list-group-item d-flex justify-content-between align-items-center"
-          >
-            <span>{item.name}</span>
-            <span>
-              <button
-                className="btn btn-sm btn-outline-success me-2"
-                onClick={() => openEditModal(item._id, item.name)}
-                title="編輯"
-              >
-                <FaEdit />
-              </button>
-              <button
-                className="btn btn-sm btn-outline-danger"
-                onClick={() => handleDelete(item._id)}
-                title="刪除"
-              >
-                <FaTrash />
-              </button>
-            </span>
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <div className="text-center">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">載入中...</span>
+          </div>
+        </div>
+      ) : (
+        <ul className="list-group">
+          {items.map((item) => (
+            <li
+              key={item._id}
+              className="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <span>{item.name}</span>
+              <span>
+                <button
+                  className="btn btn-sm btn-outline-success me-2"
+                  onClick={() => openEditModal(item._id, item.name)}
+                  title="編輯"
+                >
+                  <FaEdit />
+                </button>
+                <button
+                  className="btn btn-sm btn-outline-danger"
+                  onClick={() => handleDelete(item._id)}
+                  title="刪除"
+                >
+                  <FaTrash />
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* Bootstrap Modal */}
       {showModal && (
