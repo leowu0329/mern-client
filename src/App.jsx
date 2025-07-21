@@ -9,6 +9,23 @@ const INITIAL_FORM_STATE = {
   salesType: '內銷',
   customer: '',
   productionOrder: '',
+  date: new Date().toISOString().split('T')[0],
+  time: new Date().toLocaleTimeString('it-IT', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+  operator: '',
+  drawingVersion: '',
+  inspector: '',
+};
+
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
 };
 
 function App() {
@@ -173,212 +190,308 @@ function App() {
 
   return (
     <div
-      className="container py-5"
-      style={{ fontFamily: 'Noto Sans TC, Roboto, sans-serif', maxWidth: 600 }}
+      className="container-fluid py-5 d-flex justify-content-center align-items-start"
+      style={{
+        fontFamily: 'Noto Sans TC, Roboto, sans-serif',
+        minHeight: '100vh',
+      }}
     >
-      <h1 className="mb-4 text-center fw-bold">MERN CRUD Example</h1>
-      <div className="d-flex justify-content-end mb-3">
-        <button className="btn btn-primary" onClick={openAddModal}>
-          <FaPlus className="me-2" /> 新增
-        </button>
-      </div>
-      {loading ? (
-        <div className="text-center">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">載入中...</span>
-          </div>
+      <div style={{ width: '100%', maxWidth: 1980 }}>
+        <h1 className="mb-4 text-center fw-bold">MERN CRUD Example</h1>
+        <div className="d-flex justify-content-end mb-3">
+          <button className="btn btn-primary" onClick={openAddModal}>
+            <FaPlus className="me-2" /> 新增
+          </button>
         </div>
-      ) : (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead className="table-light">
-              <tr>
-                <th scope="col">製令編號</th>
-                <th scope="col">客戶</th>
-                <th scope="col">部門</th>
-                <th scope="col">內外銷</th>
-                <th scope="col">首件/巡檢</th>
-                <th scope="col" className="text-end">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item._id}>
-                  <td>{item.productionOrder}</td>
-                  <td>{item.customer}</td>
-                  <td>{item.department}</td>
-                  <td>
-                    <span
-                      className={`badge bg-${
-                        item.salesType === '內銷' ? 'info' : 'success'
-                      }`}
-                    >
-                      {item.salesType}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`badge bg-${
-                        item.firstPieceInspection === '首件'
-                          ? 'primary'
-                          : 'secondary'
-                      }`}
-                    >
-                      {item.firstPieceInspection}
-                    </span>
-                  </td>
-                  <td className="text-end">
-                    <button
-                      className="btn btn-sm btn-outline-success me-2"
-                      onClick={() => openEditModal(item)}
-                      title="編輯"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => handleDelete(item._id)}
-                      title="刪除"
-                    >
-                      <FaTrash />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Bootstrap Modal */}
-      {showModal && (
-        <div
-          className="modal fade show"
-          style={{ display: 'block', background: 'rgba(0,0,0,0.3)' }}
-          tabIndex="-1"
-        >
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  {editId ? '編輯項目' : '新增項目'}
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  aria-label="Close"
-                  onClick={closeModal}
-                ></button>
-              </div>
-              <form onSubmit={editId ? handleUpdate : handleAdd}>
-                <div className="modal-body">
-                  {/* --- Unified Form Start --- */}
-                  <div className="row mb-3 align-items-center">
-                    <label
-                      htmlFor="productionOrder"
-                      className="col-sm-3 col-form-label text-end fw-bold"
-                    >
-                      製令編號
-                    </label>
-                    <div className="col-sm-9">
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="productionOrder"
-                        name="productionOrder"
-                        ref={inputRef}
-                        value={formData.productionOrder}
-                        onChange={handleInputChange}
-                        placeholder="請輸入製令編號"
-                        required
-                      />
-                      {orderError && (
-                        <div
-                          className="mt-1 text-danger fw-bold text-start"
-                          style={{ fontSize: '0.95em' }}
-                        >
-                          {orderError}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="row mb-3 align-items-center">
-                    <label
-                      htmlFor="customer"
-                      className="col-sm-3 col-form-label text-end fw-bold"
-                    >
-                      客戶
-                    </label>
-                    <div className="col-sm-9">
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="customer"
-                        name="customer"
-                        value={formData.customer}
-                        onChange={handleInputChange}
-                        placeholder={
-                          formData.salesType === '內銷' ? '' : '請輸入客戶'
-                        }
-                        required
-                        disabled={formData.salesType === '內銷'}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row mb-3 align-items-center">
-                    <label
-                      htmlFor="salesType"
-                      className="col-sm-3 col-form-label text-end fw-bold"
-                    >
-                      內外銷
-                    </label>
-                    <div className="col-sm-9">
-                      <select
-                        className="form-select"
-                        id="salesType"
-                        name="salesType"
-                        value={formData.salesType}
-                        onChange={handleInputChange}
-                      >
-                        <option value="內銷">內銷</option>
-                        <option value="外銷">外銷</option>
-                      </select>
-                    </div>
-                  </div>
-                  {/* --- Unified Form End --- */}
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={closeModal}
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    className={`btn btn-${editId ? 'warning' : 'primary'}`}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                    ) : null}
-                    {editId ? '更新' : '新增'}
-                  </button>
-                </div>
-              </form>
+        {loading ? (
+          <div className="text-center">
+            <div className="spinner-border" role="status">
+              <span className="visually-hidden">載入中...</span>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead className="table-light">
+                <tr>
+                  <th scope="col">日期</th>
+                  <th scope="col">時間</th>
+                  <th scope="col">製令編號</th>
+                  <th scope="col">客戶</th>
+                  <th scope="col">部門</th>
+                  <th scope="col">作業人員</th>
+                  <th scope="col">圖面版次</th>
+                  <th scope="col">巡檢人員</th>
+                  <th scope="col">內外銷</th>
+                  <th scope="col">首件/巡檢</th>
+                  <th scope="col" className="text-end">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item._id}>
+                    <td>{formatDate(item.date)}</td>
+                    <td>{item.time}</td>
+                    <td>{item.productionOrder}</td>
+                    <td>{item.customer}</td>
+                    <td>{item.department}</td>
+                    <td>{item.operator}</td>
+                    <td>{item.drawingVersion}</td>
+                    <td>{item.inspector}</td>
+                    <td>
+                      <span
+                        className={`badge bg-${
+                          item.salesType === '內銷' ? 'info' : 'success'
+                        }`}
+                      >
+                        {item.salesType}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`badge bg-${
+                          item.firstPieceInspection === '首件'
+                            ? 'primary'
+                            : 'secondary'
+                        }`}
+                      >
+                        {item.firstPieceInspection}
+                      </span>
+                    </td>
+                    <td className="text-end">
+                      <button
+                        className="btn btn-sm btn-outline-success me-2"
+                        onClick={() => openEditModal(item)}
+                        title="編輯"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDelete(item._id)}
+                        title="刪除"
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Bootstrap Modal */}
+        {showModal && (
+          <div
+            className="modal fade show"
+            style={{ display: 'block', background: 'rgba(0,0,0,0.3)' }}
+            tabIndex="-1"
+          >
+            <div className="modal-dialog">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">
+                    {editId ? '編輯項目' : '新增項目'}
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    aria-label="Close"
+                    onClick={closeModal}
+                  ></button>
+                </div>
+                <form onSubmit={editId ? handleUpdate : handleAdd}>
+                  <div className="modal-body">
+                    {/* --- Unified Form Start --- */}
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <label
+                          htmlFor="productionOrder"
+                          className="form-label fw-bold"
+                        >
+                          製令編號
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="productionOrder"
+                          name="productionOrder"
+                          ref={inputRef}
+                          value={formData.productionOrder}
+                          onChange={handleInputChange}
+                          placeholder="請輸入製令編號"
+                          required
+                        />
+                        {orderError && (
+                          <div
+                            className="mt-1 text-danger fw-bold text-start"
+                            style={{ fontSize: '0.95em' }}
+                          >
+                            {orderError}
+                          </div>
+                        )}
+                      </div>
+                      <div className="col-md-6">
+                        <label
+                          htmlFor="inspector"
+                          className="form-label fw-bold"
+                        >
+                          巡檢人員
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="inspector"
+                          name="inspector"
+                          value={formData.inspector}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <label htmlFor="date" className="form-label fw-bold">
+                          日期
+                        </label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          id="date"
+                          name="date"
+                          value={formData.date}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label htmlFor="time" className="form-label fw-bold">
+                          時間
+                        </label>
+                        <input
+                          type="time"
+                          className="form-control"
+                          id="time"
+                          name="time"
+                          value={formData.time}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <label
+                          htmlFor="salesType"
+                          className="form-label fw-bold"
+                        >
+                          內外銷
+                        </label>
+                        <select
+                          className="form-select"
+                          id="salesType"
+                          name="salesType"
+                          value={formData.salesType}
+                          onChange={handleInputChange}
+                        >
+                          <option value="內銷">內銷</option>
+                          <option value="外銷">外銷</option>
+                        </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label
+                          htmlFor="customer"
+                          className="form-label fw-bold"
+                        >
+                          客戶
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="customer"
+                          name="customer"
+                          value={formData.customer}
+                          onChange={handleInputChange}
+                          placeholder={
+                            formData.salesType === '內銷' ? '' : '請輸入客戶'
+                          }
+                          required
+                          disabled={formData.salesType === '內銷'}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="row mb-3">
+                      <div className="col-md-6">
+                        <label
+                          htmlFor="operator"
+                          className="form-label fw-bold"
+                        >
+                          作業人員
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="operator"
+                          name="operator"
+                          value={formData.operator}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label
+                          htmlFor="drawingVersion"
+                          className="form-label fw-bold"
+                        >
+                          圖面版次
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="drawingVersion"
+                          name="drawingVersion"
+                          value={formData.drawingVersion}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* --- Unified Form End --- */}
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={closeModal}
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="submit"
+                      className={`btn btn-${editId ? 'warning' : 'primary'}`}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                      ) : null}
+                      {editId ? '更新' : '新增'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
