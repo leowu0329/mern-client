@@ -5,15 +5,20 @@ import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import { API_ENDPOINTS } from './config/api';
 import './App.css';
 
+const INITIAL_FORM_STATE = {
+  salesType: '內銷',
+  customer: '',
+  productionOrder: '',
+};
+
 function App() {
   const [items, setItems] = useState([]);
-  const [input, setInput] = useState('');
+  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [editId, setEditId] = useState(null);
-  const [editValue, setEditValue] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
+  const [orderError, setOrderError] = useState('');
 
   // 取得所有 items
   const fetchItems = async () => {
@@ -45,16 +50,16 @@ function App() {
 
   // 開啟新增 Modal
   const openAddModal = () => {
-    setModalMode('add');
-    setInput('');
+    setEditId(null);
+    // 預設為內銷，客戶為大井
+    setFormData({ ...INITIAL_FORM_STATE, customer: '大井' });
     setShowModal(true);
   };
 
   // 開啟編輯 Modal
-  const openEditModal = (id, name) => {
-    setModalMode('edit');
-    setEditId(id);
-    setEditValue(name);
+  const openEditModal = (item) => {
+    setEditId(item._id);
+    setFormData(item);
     setShowModal(true);
   };
 
@@ -62,19 +67,24 @@ function App() {
   const closeModal = () => {
     setShowModal(false);
     setEditId(null);
-    setEditValue('');
-    setInput('');
+    setFormData(INITIAL_FORM_STATE);
   };
 
   // 新增 item
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!input) return;
+    if (!formData.productionOrder) {
+      Swal.fire({
+        icon: 'error',
+        title: '錯誤',
+        text: '製令編號為必填欄位。',
+      });
+      return;
+    }
     try {
-      await axios.post(API_ENDPOINTS.ITEMS, { name: input });
-      setInput('');
+      await axios.post(API_ENDPOINTS.ITEMS, formData);
+      closeModal();
       fetchItems();
-      setShowModal(false);
       Swal.fire({
         icon: 'success',
         title: '新增成功',
@@ -119,11 +129,9 @@ function App() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`${API_ENDPOINTS.ITEMS}/${editId}`, {
-        name: editValue,
-      });
+      await axios.put(`${API_ENDPOINTS.ITEMS}/${editId}`, formData);
       setEditId(null);
-      setEditValue('');
+      setFormData(INITIAL_FORM_STATE);
       setShowModal(false);
       fetchItems();
       Swal.fire({ icon: 'success', title: '更新成功', text: '資料已更新！' });
@@ -134,6 +142,32 @@ function App() {
         title: '更新失敗',
         text: '無法更新資料，請稍後再試。',
       });
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    if (name === 'productionOrder') {
+      if (value.length !== 16) {
+        setOrderError('製令編號必須為16個字元');
+      } else {
+        setOrderError('');
+      }
+    }
+
+    if (name === 'salesType') {
+      // 當內外銷選項改變時，連動更新客戶欄位
+      setFormData((prevState) => ({
+        ...prevState,
+        salesType: value,
+        customer: value === '內銷' ? '大井' : '',
+      }));
+    } else {
+      setFormData((prevState) => ({
+        ...prevState,
+        [name]: type === 'checkbox' ? checked : value,
+      }));
     }
   };
 
@@ -155,32 +189,67 @@ function App() {
           </div>
         </div>
       ) : (
-        <ul className="list-group">
-          {items.map((item) => (
-            <li
-              key={item._id}
-              className="list-group-item d-flex justify-content-between align-items-center"
-            >
-              <span>{item.name}</span>
-              <span>
-                <button
-                  className="btn btn-sm btn-outline-success me-2"
-                  onClick={() => openEditModal(item._id, item.name)}
-                  title="編輯"
-                >
-                  <FaEdit />
-                </button>
-                <button
-                  className="btn btn-sm btn-outline-danger"
-                  onClick={() => handleDelete(item._id)}
-                  title="刪除"
-                >
-                  <FaTrash />
-                </button>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="table-responsive">
+          <table className="table table-hover align-middle">
+            <thead className="table-light">
+              <tr>
+                <th scope="col">製令編號</th>
+                <th scope="col">客戶</th>
+                <th scope="col">部門</th>
+                <th scope="col">內外銷</th>
+                <th scope="col">首件/巡檢</th>
+                <th scope="col" className="text-end">
+                  操作
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item._id}>
+                  <td>{item.productionOrder}</td>
+                  <td>{item.customer}</td>
+                  <td>{item.department}</td>
+                  <td>
+                    <span
+                      className={`badge bg-${
+                        item.salesType === '內銷' ? 'info' : 'success'
+                      }`}
+                    >
+                      {item.salesType}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`badge bg-${
+                        item.firstPieceInspection === '首件'
+                          ? 'primary'
+                          : 'secondary'
+                      }`}
+                    >
+                      {item.firstPieceInspection}
+                    </span>
+                  </td>
+                  <td className="text-end">
+                    <button
+                      className="btn btn-sm btn-outline-success me-2"
+                      onClick={() => openEditModal(item)}
+                      title="編輯"
+                    >
+                      <FaEdit />
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleDelete(item._id)}
+                      title="刪除"
+                    >
+                      <FaTrash />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* Bootstrap Modal */}
@@ -194,7 +263,7 @@ function App() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {modalMode === 'add' ? '新增項目' : '編輯項目'}
+                  {editId ? '編輯項目' : '新增項目'}
                 </h5>
                 <button
                   type="button"
@@ -203,20 +272,84 @@ function App() {
                   onClick={closeModal}
                 ></button>
               </div>
-              <form onSubmit={modalMode === 'add' ? handleAdd : handleUpdate}>
+              <form onSubmit={editId ? handleUpdate : handleAdd}>
                 <div className="modal-body">
-                  <input
-                    type="text"
-                    className="form-control"
-                    ref={inputRef}
-                    value={modalMode === 'add' ? input : editValue}
-                    onChange={(e) =>
-                      modalMode === 'add'
-                        ? setInput(e.target.value)
-                        : setEditValue(e.target.value)
-                    }
-                    placeholder="請輸入項目名稱"
-                  />
+                  {/* --- Unified Form Start --- */}
+                  <div className="row mb-3 align-items-center">
+                    <label
+                      htmlFor="productionOrder"
+                      className="col-sm-3 col-form-label text-end fw-bold"
+                    >
+                      製令編號
+                    </label>
+                    <div className="col-sm-9">
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="productionOrder"
+                        name="productionOrder"
+                        ref={inputRef}
+                        value={formData.productionOrder}
+                        onChange={handleInputChange}
+                        placeholder="請輸入製令編號"
+                        required
+                      />
+                      {orderError && (
+                        <div
+                          className="mt-1 text-danger fw-bold text-start"
+                          style={{ fontSize: '0.95em' }}
+                        >
+                          {orderError}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="row mb-3 align-items-center">
+                    <label
+                      htmlFor="customer"
+                      className="col-sm-3 col-form-label text-end fw-bold"
+                    >
+                      客戶
+                    </label>
+                    <div className="col-sm-9">
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="customer"
+                        name="customer"
+                        value={formData.customer}
+                        onChange={handleInputChange}
+                        placeholder={
+                          formData.salesType === '內銷' ? '' : '請輸入客戶'
+                        }
+                        required
+                        disabled={formData.salesType === '內銷'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="row mb-3 align-items-center">
+                    <label
+                      htmlFor="salesType"
+                      className="col-sm-3 col-form-label text-end fw-bold"
+                    >
+                      內外銷
+                    </label>
+                    <div className="col-sm-9">
+                      <select
+                        className="form-select"
+                        id="salesType"
+                        name="salesType"
+                        value={formData.salesType}
+                        onChange={handleInputChange}
+                      >
+                        <option value="內銷">內銷</option>
+                        <option value="外銷">外銷</option>
+                      </select>
+                    </div>
+                  </div>
+                  {/* --- Unified Form End --- */}
                 </div>
                 <div className="modal-footer">
                   <button
@@ -228,11 +361,17 @@ function App() {
                   </button>
                   <button
                     type="submit"
-                    className={`btn btn-${
-                      modalMode === 'add' ? 'primary' : 'warning'
-                    }`}
+                    className={`btn btn-${editId ? 'warning' : 'primary'}`}
+                    disabled={loading}
                   >
-                    {modalMode === 'add' ? '新增' : '更新'}
+                    {loading ? (
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                    ) : null}
+                    {editId ? '更新' : '新增'}
                   </button>
                 </div>
               </form>
