@@ -10,14 +10,21 @@ const INITIAL_FORM_STATE = {
   customer: '',
   productionOrder: '',
   date: new Date().toISOString().split('T')[0],
-  time: new Date().toLocaleTimeString('it-IT', {
-    hour: '2-digit',
-    minute: '2-digit',
-  }),
+  time: new Date().toTimeString().slice(0, 5),
   operator: '',
   drawingVersion: '',
   inspector: '',
+  defects: [], // 新增 defects 欄位
 };
+
+const DEFECT_CATEGORY_OPTIONS = [
+  '無圖面',
+  '圖物不符',
+  '尺寸NG',
+  '外觀NG',
+  '人員作業疏失',
+  '特性異常',
+];
 
 const formatDate = (dateString) => {
   const date = new Date(dateString);
@@ -76,7 +83,12 @@ function App() {
   // 開啟編輯 Modal
   const openEditModal = (item) => {
     setEditId(item._id);
-    setFormData(item);
+    setFormData({
+      ...item,
+      date: new Date(item.date).toISOString().split('T')[0],
+      time: item.time ? item.time.slice(0, 5) : '',
+      defects: item.defects || [],
+    });
     setShowModal(true);
   };
 
@@ -99,7 +111,11 @@ function App() {
       return;
     }
     try {
-      await axios.post(API_ENDPOINTS.ITEMS, formData);
+      const payload = {
+        ...formData,
+        defects: formData.defects.filter((d) => d.defectCategory),
+      };
+      await axios.post(API_ENDPOINTS.ITEMS, payload);
       closeModal();
       fetchItems();
       Swal.fire({
@@ -109,6 +125,7 @@ function App() {
       });
     } catch (error) {
       console.error('Error adding item:', error);
+      console.error(error.response?.data || error);
       Swal.fire({
         icon: 'error',
         title: '新增失敗',
@@ -146,7 +163,11 @@ function App() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`${API_ENDPOINTS.ITEMS}/${editId}`, formData);
+      const payload = {
+        ...formData,
+        defects: formData.defects.filter((d) => d.defectCategory),
+      };
+      await axios.put(`${API_ENDPOINTS.ITEMS}/${editId}`, payload);
       setEditId(null);
       setFormData(INITIAL_FORM_STATE);
       setShowModal(false);
@@ -188,6 +209,38 @@ function App() {
     }
   };
 
+  // 新增/移除 defects 欄位的處理
+  const handleDefectChange = (idx, field, value) => {
+    setFormData((prev) => {
+      const newDefects = prev.defects.map((d, i) =>
+        i === idx ? { ...d, [field]: value } : d,
+      );
+      // 清空下層欄位
+      if (field === 'defectCategory') {
+        newDefects[idx].defectStatus = '';
+        newDefects[idx].countermeasure = '';
+      } else if (field === 'defectStatus') {
+        newDefects[idx].countermeasure = '';
+      }
+      return { ...prev, defects: newDefects };
+    });
+  };
+  const addDefect = () => {
+    setFormData((prev) => ({
+      ...prev,
+      defects: [
+        ...prev.defects,
+        { defectCategory: '', defectStatus: '', countermeasure: '' },
+      ],
+    }));
+  };
+  const removeDefect = (idx) => {
+    setFormData((prev) => ({
+      ...prev,
+      defects: prev.defects.filter((_, i) => i !== idx),
+    }));
+  };
+
   return (
     <div
       className="container-fluid py-5 d-flex justify-content-center align-items-start"
@@ -214,16 +267,14 @@ function App() {
             <table className="table table-hover align-middle">
               <thead className="table-light">
                 <tr>
-                  <th scope="col">日期</th>
-                  <th scope="col">時間</th>
-                  <th scope="col">製令編號</th>
-                  <th scope="col">客戶</th>
-                  <th scope="col">部門</th>
+                  <th scope="col">日期/時間</th>
+                  <th scope="col">內外銷/客戶</th>
+                  <th scope="col">製令編號/部門</th>
                   <th scope="col">作業人員</th>
                   <th scope="col">圖面版次</th>
-                  <th scope="col">巡檢人員</th>
-                  <th scope="col">內外銷</th>
-                  <th scope="col">首件/巡檢</th>
+                  <th scope="col">不良分類</th>
+                  <th scope="col">不良狀況</th>
+                  <th scope="col">處置對策</th>
                   <th scope="col" className="text-end">
                     操作
                   </th>
@@ -232,33 +283,70 @@ function App() {
               <tbody>
                 {items.map((item) => (
                   <tr key={item._id}>
-                    <td>{formatDate(item.date)}</td>
-                    <td>{item.time}</td>
-                    <td>{item.productionOrder}</td>
-                    <td>{item.customer}</td>
-                    <td>{item.department}</td>
-                    <td>{item.operator}</td>
-                    <td>{item.drawingVersion}</td>
-                    <td>{item.inspector}</td>
                     <td>
-                      <span
-                        className={`badge bg-${
-                          item.salesType === '內銷' ? 'info' : 'success'
-                        }`}
-                      >
-                        {item.salesType}
-                      </span>
+                      <div>
+                        {formatDate(item.date)}{' '}
+                        <span style={{ fontSize: '0.95em', color: '#888' }}>
+                          {item.time}
+                        </span>
+                      </div>
+                      <div>
+                        <span
+                          className={`badge bg-${
+                            item.firstPieceInspection === '首件'
+                              ? 'primary'
+                              : 'secondary'
+                          } me-2`}
+                        >
+                          {item.firstPieceInspection}
+                        </span>
+                        <span style={{ fontSize: '0.95em', color: '#888' }}>
+                          {item.inspector}
+                        </span>
+                      </div>
                     </td>
                     <td>
-                      <span
-                        className={`badge bg-${
-                          item.firstPieceInspection === '首件'
-                            ? 'primary'
-                            : 'secondary'
-                        }`}
-                      >
-                        {item.firstPieceInspection}
-                      </span>
+                      <div>
+                        <span
+                          className={`badge bg-${
+                            item.salesType === '內銷' ? 'info' : 'success'
+                          }`}
+                        >
+                          {item.salesType}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.95em', color: '#888' }}>
+                        {item.customer}
+                      </div>
+                    </td>
+                    <td>
+                      <div>{item.productionOrder}</div>
+                      <div style={{ fontSize: '0.95em', color: '#888' }}>
+                        {item.department}
+                      </div>
+                    </td>
+                    <td>{item.operator}</td>
+                    <td>{item.drawingVersion}</td>
+                    <td>
+                      {item.defects && item.defects.length > 0
+                        ? item.defects.map((d, i) => (
+                            <div key={i}>{d.defectCategory || '-'}</div>
+                          ))
+                        : '-'}
+                    </td>
+                    <td>
+                      {item.defects && item.defects.length > 0
+                        ? item.defects.map((d, i) => (
+                            <div key={i}>{d.defectStatus || '-'}</div>
+                          ))
+                        : '-'}
+                    </td>
+                    <td>
+                      {item.defects && item.defects.length > 0
+                        ? item.defects.map((d, i) => (
+                            <div key={i}>{d.countermeasure || '-'}</div>
+                          ))
+                        : '-'}
                     </td>
                     <td className="text-end">
                       <button
@@ -461,6 +549,95 @@ function App() {
                       </div>
                     </div>
 
+                    {/* 不良資訊巢狀表單 */}
+                    <div className="mb-3">
+                      <label className="form-label fw-bold">不良資訊</label>
+                      {formData.defects && formData.defects.length > 0 && (
+                        <div className="d-flex flex-column gap-2">
+                          {formData.defects.map((defect, idx) => (
+                            <div
+                              key={idx}
+                              className="border rounded p-2 mb-2 bg-light-subtle"
+                            >
+                              <div className="row g-2 align-items-end">
+                                <div className="col-md-4">
+                                  <label className="form-label">不良分類</label>
+                                  <select
+                                    className="form-select"
+                                    value={defect.defectCategory || ''}
+                                    onChange={(e) =>
+                                      handleDefectChange(
+                                        idx,
+                                        'defectCategory',
+                                        e.target.value,
+                                      )
+                                    }
+                                  >
+                                    <option value="">請選擇</option>
+                                    {DEFECT_CATEGORY_OPTIONS.map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-md-4">
+                                  <label className="form-label">不良狀況</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={defect.defectStatus || ''}
+                                    onChange={(e) =>
+                                      handleDefectChange(
+                                        idx,
+                                        'defectStatus',
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={!defect.defectCategory}
+                                    placeholder="請先選擇不良分類"
+                                  />
+                                </div>
+                                <div className="col-md-3">
+                                  <label className="form-label">處置對策</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={defect.countermeasure || ''}
+                                    onChange={(e) =>
+                                      handleDefectChange(
+                                        idx,
+                                        'countermeasure',
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={!defect.defectStatus}
+                                    placeholder="請先輸入不良狀況"
+                                  />
+                                </div>
+                                <div className="col-md-1 d-flex align-items-end">
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-danger btn-sm"
+                                    onClick={() => removeDefect(idx)}
+                                    title="移除此筆不良"
+                                  >
+                                    &times;
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm mt-2"
+                        onClick={addDefect}
+                      >
+                        新增不良記錄
+                      </button>
+                    </div>
                     {/* --- Unified Form End --- */}
                   </div>
                   <div className="modal-footer">
